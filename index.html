@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Signal Messenger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05080E;
+    --surface: #0D1421;
+    --surface2: #162133;
+    --border: #202F47;
+    --buy: #00D4AA;
+    --buy-dim: rgba(0,212,170,0.12);
+    --buy-border: rgba(0,212,170,0.35);
+    --sell: #FF4D6D;
+    --sell-dim: rgba(255,77,109,0.12);
+    --sell-border: rgba(255,77,109,0.35);
+    --amber: #F5A623;
+    --text: #E2EAF4;
+    --muted: #6A82A3;
+    --muted2: #2A3A50;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-thai: 'Noto Sans Thai', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: var(--font-thai);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 12px 30px;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    width: 100%; max-width: 480px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--buy-border), var(--buy-dim));
+    border: 1px solid var(--buy-border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--buy);
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: #FFF; font-family: var(--font-mono); letter-spacing: 0.05em;}
+  .live-badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 20px;
+    background: rgba(0,212,170,0.08);
+    border: 1px solid var(--buy-border);
+    font-size: 11px; color: var(--buy); font-family: var(--font-mono); font-weight: 600;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--buy);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ── MARKET TICKER ── */
+  .ticker {
+    width: 100%; max-width: 480px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; margin-bottom: 12px;
+  }
+  .tick-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .tick-pair { font-size: 10px; font-family: var(--font-mono); color: var(--muted); margin-bottom: 2px; }
+  .tick-price { font-size: 13px; font-weight: 700; font-family: var(--font-mono); }
+  .tick-change { font-size: 10px; font-family: var(--font-mono); margin-top: 1px; }
+  .up { color: var(--buy); }
+  .dn { color: var(--sell); }
+
+  /* ── CHAT AREA ── */
+  .chat-wrap {
+    width: 100%; max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .chat-messages {
+    height: 320px;
+    overflow-y: auto;
+    padding: 14px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* ── MESSAGE BUBBLES ── */
+  .msg { display: flex; flex-direction: column; max-width: 90%; }
+  .msg.me { align-self: flex-end; align-items: flex-end; }
+  .msg.them { align-self: flex-start; align-items: flex-start; }
+
+  .msg-sender { font-size: 10px; color: var(--muted); margin-bottom: 3px; font-family: var(--font-mono); }
+
+  .bubble {
+    padding: 10px 13px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    position: relative;
+    word-break: break-word;
+  }
+  .msg.them .bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: var(--text);
+  }
+  .msg.me .bubble {
+    background: #23354E;
+    border: 1px solid #334B6E;
+    border-bottom-right-radius: 4px;
+    color: #FFF;
+  }
+
+  /* Signal bubbles */
+  .bubble.signal-buy { background: var(--buy-dim); border: 1px solid var(--buy-border); border-bottom-right-radius: 4px; color: #fff;}
+  .bubble.signal-sell { background: var(--sell-dim); border: 1px solid var(--sell-border); border-bottom-right-radius: 4px; color: #fff;}
+
+  .signal-header { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; }
+  .signal-label-buy { color: var(--buy); }
+  .signal-label-sell { color: var(--sell); }
+
+  .signal-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .icon-buy { background: var(--buy-dim); color: var(--buy); }
+  .icon-sell { background: var(--sell-dim); color: var(--sell); }
+
+  .signal-pair { font-size: 16px; font-weight: 700; font-family: var(--font-mono); margin-bottom: 6px; }
+  .signal-pair.buy-pair { color: var(--buy); }
+  .signal-pair.sell-pair { color: var(--sell); }
+
+  .signal-rows { display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;}
+  .signal-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-family: var(--font-mono); gap: 15px;}
+  .signal-key { color: var(--muted); }
+  .signal-val { font-weight: 600; color: #FFF; }
+  .signal-val.buy-col { color: var(--buy); }
+  .signal-val.sell-col { color: var(--sell); }
+
+  .msg-time { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+  .sys-msg { text-align: center; font-size: 11px; color: var(--muted); font-family: var(--font-mono); padding: 4px 10px; background: var(--surface2); border-radius: 20px; align-self: center; margin-bottom: 5px;}
+
+  .chat-divider { height: 1px; background: var(--border); margin: 0; }
+
+  /* ── QUICK SIGNAL PANEL ── */
+  .quick-panel { padding: 14px; background: var(--surface); }
+  
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .quick-title { font-size: 11px; color: var(--muted); font-family: var(--font-mono); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* ── PAIR SELECTOR ── */
+  .pair-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .pair-row::-webkit-scrollbar { display: none; }
+  .pair-btn {
+    padding: 6px 12px; border-radius: 8px; font-size: 12px; font-family: var(--font-mono); font-weight: 600;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .pair-btn.selected { border-color: var(--buy-border); color: var(--buy); background: var(--buy-dim); box-shadow: 0 0 10px rgba(0,212,170,0.1); }
+  .pair-btn:hover:not(.selected) { border-color: var(--muted); color: #FFF; }
+
+  /* ── MANUAL INPUTS (ENTRY, TP, SL) ── */
+  .trade-inputs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .trade-inp-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .trade-inp-group label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); font-weight: 600; }
+  .trade-inp-group input {
+    width: 100%; padding: 8px; border-radius: 8px; background: var(--surface2);
+    border: 1px solid var(--border); color: #FFF; font-family: var(--font-mono); font-size: 12px; text-align: center; outline: none;
+    transition: border-color 0.2s;
+  }
+  .trade-inp-group input:focus { border-color: var(--buy-border); }
+  .trade-inp-group input::placeholder { color: var(--muted2); font-family: var(--font-thai); font-size: 11px; }
+  .trade-clear-btn { font-size: 10px; color: var(--muted); text-align: right; cursor: pointer; margin-top: -8px; margin-bottom: 8px; text-decoration: underline; }
+
+  /* ── SIGNAL BUTTONS ── */
+  .signal-btns { display: flex; gap: 8px; margin-bottom: 14px; }
+  .btn-signal {
+    flex: 1; padding: 14px 8px; border-radius: 14px; font-family: var(--font-mono); font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform 0.1s, box-shadow 0.15s; position: relative; overflow: hidden;
+  }
+  .btn-signal::after { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s; background: white; border-radius: inherit; }
+  .btn-signal:active::after { opacity: 0.15; }
+  .btn-signal:active { transform: scale(0.96); }
+
+  .btn-buy { background: linear-gradient(145deg, #00D4AA 0%, #00A882 100%); color: #051A12; box-shadow: 0 4px 15px rgba(0,212,170,0.25); }
+  .btn-sell { background: linear-gradient(145deg, #FF4D6D 0%, #D63055 100%); color: #1A020A; box-shadow: 0 4px 15px rgba(255,77,109,0.25); }
+
+  .btn-signal-icon { font-size: 18px; line-height: 1;}
+  .btn-signal-label { font-size: 14px; font-weight: 800; letter-spacing: 0.04em; }
+
+  /* ── QUICK PHRASE CHIPS ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; max-height: 70px; overflow-y: auto; scrollbar-width: none;}
+  .chip {
+    padding: 6px 12px; border-radius: 20px; font-size: 12px; font-family: var(--font-thai);
+    cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+    transition: all 0.15s; white-space: nowrap; user-select: none;
+  }
+  .chip:hover { border-color: var(--buy-border); color: var(--buy); background: var(--buy-dim); }
+  .chip:active { transform: scale(0.95); }
+  
+  .icon-btn { cursor: pointer; color: var(--muted); font-size: 14px; background: none; border: none; padding: 2px; transition: color 0.2s;}
+  .icon-btn:hover { color: #FFF; }
+
+  /* ── INPUT ROW ── */
+  .input-row { display: flex; align-items: center; gap: 8px; padding: 0 0 2px; }
+  .chat-input {
+    flex: 1; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-family: var(--font-thai); font-size: 13px; outline: none; transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: var(--buy-border); }
+  .chat-input::placeholder { color: var(--muted); }
+  .send-btn {
+    width: 44px; height: 44px; border-radius: 12px; background: var(--buy); color: #051A12;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; transition: transform 0.1s, background 0.15s; flex-shrink: 0;
+  }
+  .send-btn:hover { background: #00B894; }
+  .send-btn:active { transform: scale(0.92); }
+
+  /* ── ANIMATIONS & MISC ── */
+  @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .msg-new { animation: slideUp 0.25s ease; }
+  .panel-sep { height: 1px; background: var(--border); margin: 12px 0; }
+  
+  /* ── MODALS ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px);}
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;}
+  .modal-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 600; color: #FFF; }
+  .modal-close { cursor: pointer; font-size: 24px; color: var(--muted); line-height: 1; }
+  .modal-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; font-weight: 600;}
+  .modal-input { width: 100%; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: #FFF; font-family: var(--font-thai); font-size: 13px; outline: none; margin-bottom: 16px; }
+  .modal-btn { width: 100%; padding: 14px; border-radius: 12px; background: var(--buy); color: #051A12; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s;}
+  .modal-btn:hover { opacity: 0.9; }
+
+  /* Custom Chips Manager */
+  .chip-manager-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 200px; overflow-y: auto;}
+  .chip-manage-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--surface2); border-radius: 8px; font-size: 13px;}
+  .chip-delete-btn { color: var(--sell); cursor: pointer; font-weight: bold; padding: 4px 8px; background: rgba(255,77,109,0.1); border-radius: 6px;}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="avatar">FX</div>
+    <div class="header-title">FX SIGNAL</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="live-badge">
+      <div class="live-dot"></div> LIVE
+    </div>
+    <div onclick="openSettings()" style="cursor:pointer;width:36px;height:36px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;">
+      &#9881;&#65039;
+      <span id="tg-dot" style="position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#FF4D6D;border:2px solid var(--surface);"></span>
+    </div>
+  </div>
+</div>
+
+<div class="ticker">
+  <div class="tick-card">
+    <div class="tick-pair">XAU/USD</div>
+    <div class="tick-price up" id="xau">2,318.45</div>
+    <div class="tick-change up" id="xau-chg">+0.48%</div>
+  </div>
+  <div class="tick-card">
+    <div class="tick-pair">EUR/USD</div>
+    <div class="tick-price up" id="eur">1.0842</div>
+    <div class="tick-change up" id="eur-chg">+0.21%</div>
+  </div>
+  <div class="tick-card">
+    <div class="tick-pair">GBP/USD</div>
+    <div class="tick-price dn" id="gbp">1.2673</div>
+    <div class="tick-change dn" id="gbp-chg">−0.15%</div>
+  </div>
+</div>
+
+<div class="chat-wrap">
+  <div class="chat-messages" id="chatMessages">
+  </div>
+
+  <div class="chat-divider"></div>
+
+  <div class="quick-panel">
+
+    <div class="section-header">
+      <span class="quick-title">เลือกคู่เงิน</span>
+    </div>
+    <div class="pair-row" id="pairRow">
+      <button class="pair-btn selected" onclick="selectPair(this,'XAU/USD')">XAU/USD</button>
+      <button class="pair-btn" onclick="selectPair(this,'EUR/USD')">EUR/USD</button>
+      <button class="pair-btn" onclick="selectPair(this,'GBP/USD')">GBP/USD</button>
+      <button class="pair-btn" onclick="selectPair(this,'BTC/USD')">BTC/USD</button>
+      <button class="pair-btn" onclick="selectPair(this,'USD/JPY')">USD/JPY</button>
+    </div>
+
+    <div class="trade-inputs">
+      <div class="trade-inp-group">
+        <label>Entry</label>
+        <input type="number" id="inp-entry" placeholder="Market">
+      </div>
+      <div class="trade-inp-group">
+        <label>TP</label>
+        <input type="number" id="inp-tp" placeholder="ไม่ระบุ">
+      </div>
+      <div class="trade-inp-group">
+        <label>SL</label>
+        <input type="number" id="inp-sl" placeholder="ไม่ระบุ">
+      </div>
+    </div>
+    <div class="trade-clear-btn" onclick="clearInputs()">ล้างค่าราคา (ส่งแบบด่วน)</div>
+
+    <div class="signal-btns">
+      <button class="btn-signal btn-buy" onclick="sendSignal('buy')">
+        <span class="btn-signal-icon">▲</span>
+        <span class="btn-signal-label">BUY NOW</span>
+      </button>
+      <button class="btn-signal btn-sell" onclick="sendSignal('sell')">
+        <span class="btn-signal-icon">▼</span>
+        <span class="btn-signal-label">SELL NOW</span>
+      </button>
+    </div>
+
+    <div class="panel-sep"></div>
+
+    <div class="section-header">
+      <span class="quick-title">ข้อความด่วน</span>
+      <button class="icon-btn" onclick="openChipsModal()">⚙️ จัดการ</button>
+    </div>
+    <div class="chips" id="chipsContainer">
+      </div>
+
+    <div class="input-row">
+      <input class="chat-input" id="textInput" placeholder="พิมพ์ข้อความวิเคราะห์ หรือพูดคุย..." onkeydown="handleKey(event)">
+      <button class="send-btn" onclick="sendText()">➤</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast" style="display:none;position:fixed;bottom:30px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:20px;font-size:13px;font-weight:500;font-family:'Noto Sans Thai',sans-serif;z-index:9999;transition:opacity 0.4s;white-space:nowrap;box-shadow:0 10px 20px rgba(0,0,0,0.3);"></div>
+
+<div id="settingsModal" class="modal-overlay" onclick="if(event.target===this)closeModal('settingsModal')">
+  <div class="modal-box">
+    <div class="modal-title-row">
+      <div class="modal-title">&#9881; Telegram Settings</div>
+      <div class="modal-close" onclick="closeModal('settingsModal')">&times;</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:12px;border:1px solid var(--border);">
+      <div style="width:10px;height:10px;border-radius:50%;background:#FF4D6D;" id="tg-dot-modal"></div>
+      <span id="tg-lbl" style="font-size:13px;color:#FFF;font-family:var(--font-mono);font-weight:600;">ยังไม่ได้ตั้งค่า</span>
+    </div>
+    <label class="modal-label">BOT TOKEN</label>
+    <input id="inp-tg-token" class="modal-input" type="text" placeholder="7312456789:AAHdqTcvCH1vGWJx...">
+    <label class="modal-label">CHAT ID</label>
+    <input id="inp-tg-chatid" class="modal-input" type="text" placeholder="-1001234567890">
+    
+    <button onclick="saveSettings()" class="modal-btn" style="margin-bottom:10px;">บันทึกข้อมูล</button>
+    <button id="btn-test-tg" onclick="testTelegram()" class="modal-btn" style="background:transparent;color:var(--buy);border:1px solid var(--buy-border);">ทดสอบส่งข้อความ</button>
+  </div>
+</div>
+
+<div id="chipsModal" class="modal-overlay" onclick="if(event.target===this)closeModal('chipsModal')">
+  <div class="modal-box">
+    <div class="modal-title-row">
+      <div class="modal-title">📝 จัดการข้อความด่วน</div>
+      <div class="modal-close" onclick="closeModal('chipsModal')">&times;</div>
+    </div>
+    
+    <div class="chip-manager-list" id="chipManagerList">
+      </div>
+
+    <label class="modal-label">เพิ่มข้อความใหม่</label>
+    <div style="display:flex; gap:8px; margin-bottom: 10px;">
+      <input id="inp-new-chip" class="modal-input" style="margin-bottom:0;" type="text" placeholder="เช่น TP1 Hit!">
+      <button onclick="addCustomChip()" class="modal-btn" style="width:auto; padding: 0 20px;">เพิ่ม</button>
+    </div>
+    <button onclick="resetDefaultChips()" class="modal-btn" style="background:transparent;color:var(--muted);border:1px solid var(--border); padding: 8px; font-size:12px;">คืนค่าเริ่มต้น</button>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG & STATE ──
+  let TG_TOKEN = localStorage.getItem('tg_token') || '';
+  let TG_CHAT_ID = localStorage.getItem('tg_chatid') || '';
+  let selectedPair = 'XAU/USD';
+
+  // Default Chips
+  const defaultChips = ['✅ TP1 Hit!', '🎯 TP2 Hit!', '❌ Close Trade', '⏸ Move SL to BE', '📊 ราคาเหมาะซื้อ', '⚠️ หยุดรอก่อน', '💰 Lock Profit'];
+  let customChips = JSON.parse(localStorage.getItem('custom_chips')) || defaultChips;
+
+  // ── INIT ──
+  window.onload = () => {
+    updateTgStatus();
+    renderChips();
+    scrollBottom();
+  };
+
+  // ── TELEGRAM FUNCTIONS ──
+  function openSettings() {
+    document.getElementById('settingsModal').style.display = 'flex';
+    document.getElementById('inp-tg-token').value = TG_TOKEN;
+    document.getElementById('inp-tg-chatid').value = TG_CHAT_ID;
+  }
+  
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  
+  function saveSettings() {
+    TG_TOKEN = document.getElementById('inp-tg-token').value.trim();
+    TG_CHAT_ID = document.getElementById('inp-tg-chatid').value.trim();
+    localStorage.setItem('tg_token', TG_TOKEN);
+    localStorage.setItem('tg_chatid', TG_CHAT_ID);
+    updateTgStatus();
+    showToast('บันทึกการตั้งค่าแล้ว');
+    closeModal('settingsModal');
+  }
+
+  function updateTgStatus() {
+    const dot = document.getElementById('tg-dot');
+    const dotModal = document.getElementById('tg-dot-modal');
+    const lbl = document.getElementById('tg-lbl');
+    if (TG_TOKEN && TG_CHAT_ID) {
+      dot.style.background = '#00D4AA';
+      if (dotModal) dotModal.style.background = '#00D4AA';
+      if (lbl) lbl.textContent = 'เชื่อมต่อแล้ว';
+    } else {
+      dot.style.background = '#FF4D6D';
+      if (dotModal) dotModal.style.background = '#FF4D6D';
+      if (lbl) lbl.textContent = 'ยังไม่ได้ตั้งค่า';
+    }
+  }
+
+  async function testTelegram() {
+    if (!TG_TOKEN || !TG_CHAT_ID) { showToast('กรอก Token และ Chat ID ก่อนครับ', 'err'); return; }
+    const btn = document.getElementById('btn-test-tg');
+    btn.textContent = 'กำลังส่ง...'; btn.disabled = true;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: '✅ FX Signal Bot เชื่อมต่อสำเร็จแล้ว!' })
+      });
+      const d = await res.json();
+      if (d.ok) { showToast('ส่งสำเร็จ! เช็ค Telegram ได้เลย'); }
+      else { showToast('Error: ' + (d.description || 'ไม่สำเร็จ'), 'err'); }
+    } catch(e) { showToast('เชื่อมต่อไม่ได้ ลองเช็คเน็ตเวิร์ค', 'err'); }
+    btn.textContent = 'ทดสอบส่งข้อความ'; btn.disabled = false;
+  }
+
+  async function sendToTelegram(text) {
+    if (!TG_TOKEN || !TG_CHAT_ID) return;
+    try {
+      await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TG_CHAT_ID, text: text, parse_mode: 'HTML' })
+      });
+    } catch(e) { console.log('Telegram error', e); }
+  }
+
+  function showToast(msg, type = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = type === 'err' ? 'var(--sell)' : 'var(--buy)';
+    t.style.color = type === 'err' ? '#FFF' : '#051A12';
+    t.style.display = 'block'; t.style.opacity = '1';
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.style.display = 'none', 400); }, 2500);
+  }
+
+  // ── UI LOGIC ──
+  function now() {
+    const d = new Date();
+    return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  }
+
+  function scrollBottom() {
+    const c = document.getElementById('chatMessages');
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function selectPair(el, pair) {
+    selectedPair = pair;
+    document.querySelectorAll('.pair-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('inp-entry').placeholder = 'Market';
+  }
+
+  function clearInputs() {
+    document.getElementById('inp-entry').value = '';
+    document.getElementById('inp-tp').value = '';
+    document.getElementById('inp-sl').value = '';
+  }
+
+  // ── CUSTOM CHIPS MANAGER ──
+  function renderChips() {
+    const container = document.getElementById('chipsContainer');
+    container.innerHTML = '';
+    customChips.forEach(text => {
+      const div = document.createElement('div');
+      div.className = 'chip';
+      div.textContent = text;
+      div.onclick = () => sendChip(text);
+      container.appendChild(div);
+    });
+  }
+
+  function openChipsModal() {
+    document.getElementById('chipsModal').style.display = 'flex';
+    renderChipManager();
+  }
+
+  function renderChipManager() {
+    const list = document.getElementById('chipManagerList');
+    list.innerHTML = '';
+    customChips.forEach((text, idx) => {
+      list.innerHTML += `
+        <div class="chip-manage-item">
+          <span>${text}</span>
+          <span class="chip-delete-btn" onclick="deleteChip(${idx})">ลบ</span>
+        </div>
+      `;
+    });
+  }
+
+  function addCustomChip() {
+    const inp = document.getElementById('inp-new-chip');
+    const val = inp.value.trim();
+    if (!val) return;
+    customChips.push(val);
+    saveChips();
+    inp.value = '';
+    renderChipManager();
+    renderChips();
+  }
+
+  function deleteChip(idx) {
+    customChips.splice(idx, 1);
+    saveChips();
+    renderChipManager();
+    renderChips();
+  }
+
+  function resetDefaultChips() {
+    customChips = [...defaultChips];
+    saveChips();
+    renderChipManager();
+    renderChips();
+  }
+
+  function saveChips() {
+    localStorage.setItem('custom_chips', JSON.stringify(customChips));
+  }
+
+  // ── SENDING LOGIC ──
+  function sendSignal(type) {
+    const isBuy = type === 'buy';
+    const label = isBuy ? 'BUY NOW' : 'SELL NOW';
+    const cls = isBuy ? 'signal-buy' : 'signal-sell';
+    const iconCls = isBuy ? 'icon-buy' : 'icon-sell';
+    const arrowCls = isBuy ? 'buy-pair' : 'sell-pair';
+    const icon = isBuy ? '▲' : '▼';
+    const lblCls = isBuy ? 'signal-label-buy' : 'signal-label-sell';
+    
+    const rawEntry = document.getElementById('inp-entry').value;
+    const rawTp = document.getElementById('inp-tp').value;
+    const rawSl = document.getElementById('inp-sl').value;
+
+    const entry = rawEntry ? rawEntry : 'Market';
+    let detailsHtml = '';
+    let tgText = `${isBuy ? '🟢' : '🔴'} <b>${label}</b>\n💱 ${selectedPair}\n📌 Entry: ${entry}\n`;
+
+    if (rawEntry || rawTp || rawSl) {
+      detailsHtml = `<div class="signal-rows">`;
+      detailsHtml += `<div class="signal-row"><span class="signal-key">Entry</span><span class="signal-val">${entry}</span></div>`;
+      if (rawTp) {
+        detailsHtml += `<div class="signal-row"><span class="signal-key">TP</span><span class="signal-val ${isBuy ? 'buy-col' : 'sell-col'}">${rawTp}</span></div>`;
+        tgText += `🎯 TP: ${rawTp}\n`;
+      }
+      if (rawSl) {
+        detailsHtml += `<div class="signal-row"><span class="signal-key">SL</span><span class="signal-val ${isBuy ? 'sell-col' : 'buy-col'}">${rawSl}</span></div>`;
+        tgText += `🛑 SL: ${rawSl}\n`;
+      }
+      detailsHtml += `</div>`;
+    } else {
+      detailsHtml = `<div style="font-size:11px; margin-top:4px; opacity:0.8; font-family:var(--font-mono);">⚡ Market Execution</div>`;
+      tgText += `⚡ Market Execution\n`;
+    }
+
+    tgText += `⏰ ${now()}`;
+
+    const html = `
+      <div class="msg me msg-new">
+        <div class="bubble ${cls}">
+          <div class="signal-header">
+            <div class="signal-icon ${iconCls}">${icon}</div>
+            <span class="${lblCls}">${label}</span>
+          </div>
+          <div class="signal-pair ${arrowCls}">${selectedPair}</div>
+          ${detailsHtml}
+        </div>
+        <div class="msg-time">${now()}</div>
+      </div>
+    `;
+    addMsg(html);
+    flashBtn(isBuy ? 0 : 1);
+
+    sendToTelegram(tgText);
+    showToast(TG_TOKEN ? `ส่ง ${label} ไป Telegram แล้ว` : 'ระบบจำลองการส่ง (ตั้งค่า TG ก่อนเพื่อส่งจริง)');
+    clearInputs(); 
+  }
+
+  function sendChip(text) {
+    const html = `
+      <div class="msg me msg-new">
+        <div class="bubble">${escHtml(text)}</div>
+        <div class="msg-time">${now()}</div>
+      </div>
+    `;
+    addMsg(html);
+    sendToTelegram(`💬 ${text}`);
+    if (TG_TOKEN) showToast('ส่งไป Telegram แล้ว');
+  }
+
+  function sendText() {
+    const input = document.getElementById('textInput');
+    const val = input.value.trim();
+    if (!val) return;
+    const html = `
+      <div class="msg me msg-new">
+        <div class="bubble">${escHtml(val)}</div>
+        <div class="msg-time">${now()}</div>
+      </div>
+    `;
+    addMsg(html);
+    sendToTelegram(`📢 ${val}`);
+    input.value = '';
+  }
+
+  function handleKey(e) { if (e.key === 'Enter') sendText(); }
+
+  function addMsg(html) {
+    const c = document.getElementById('chatMessages');
+    c.insertAdjacentHTML('beforeend', html);
+    scrollBottom();
+  }
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function flashBtn(idx) {
+    const btns = document.querySelectorAll('.btn-signal');
+    const b = btns[idx];
+    b.style.transform = 'scale(0.94)';
+    setTimeout(() => b.style.transform = '', 150);
+  }
+
+  setInterval(() => {
+    const pairs = ['xau','eur','gbp'];
+    const base = [2318.45, 1.0842, 1.2673];
+    pairs.forEach((p, i) => {
+      const delta = (Math.random() - 0.5) * (i === 0 ? 0.8 : 0.0005);
+      const newVal = base[i] + delta * (Math.random() > 0.5 ? 1 : -1);
+      const el = document.getElementById(p);
+      const chgEl = document.getElementById(p + '-chg');
+      const pct = ((newVal - base[i]) / base[i] * 100).toFixed(2);
+      if(el) el.textContent = i === 0 ? newVal.toFixed(2) : newVal.toFixed(4);
+      const up = delta >= 0;
+      if(el) el.className = 'tick-price ' + (up ? 'up' : 'dn');
+      if(chgEl) {
+        chgEl.className = 'tick-change ' + (up ? 'up' : 'dn');
+        chgEl.textContent = (up ? '+' : '−') + Math.abs(pct) + '%';
+      }
+    });
+  }, 2500);
+
+</script>
+</body>
+</html>
